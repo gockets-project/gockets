@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+</head>
+<body>
+<label for="output">Websocket Output</label><textarea readonly id="output" cols="30" rows="10"></textarea>
+<label for="subscriber-token"></label><input type="text" id="subscriber-token">
+<button id="ws-connect">Connect</button>
+<script>
+    window.onload = function () {
+        const outputTextArea = document.querySelector('#output');
+        const connectBtn = document.querySelector('#ws-connect');
+        const subToken = document.querySelector('#subscriber-token');
+
+        connectBtn.addEventListener('click', function () {
+            // Create WebSocket connection.
+            const socket = new WebSocket('ws://localhost:8844/channel/subscribe/' + subToken.value);
+
+            // Connection opened
+            socket.addEventListener('open', function (event) {
+                textAreaText = outputTextArea.value;
+                outputTextArea.value = textAreaText + "Connection opened \n";
+            });
+
+            // Listen for messages
+            socket.addEventListener('message', function (event) {
+                textAreaText = outputTextArea.value;
+                outputTextArea.value = textAreaText + "Got data from socket: " + event.data + "\n";
+            });
+        });
+    };
+</script>
+</body>
+</html>
