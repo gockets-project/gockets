@@ -87,8 +87,16 @@ func CreateConnection(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	if channel, ok := SubscriberChannels[vars["subscriberToken"]]; ok {
 		socketConnection, _ := upgrader.Upgrade(w, r, nil)
-		dataChannel := make(chan string)
-		channel.SubscriberChannel = dataChannel
+
+		var dataChannel chan string
+
+		if channel.SubscriberChannel == nil {
+			dataChannel = make(chan string)
+			channel.SubscriberChannel = dataChannel
+		} else {
+			dataChannel = channel.SubscriberChannel
+		}
+
 		go PushDataToConnection(socketConnection, dataChannel)
 	} else {
 		preparedJson, _ := json.Marshal(models.Response{
