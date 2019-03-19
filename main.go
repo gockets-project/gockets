@@ -10,32 +10,19 @@ import (
 	"strconv"
 	"time"
 
+	"websocket/models"
+
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 )
 
-var PublisherChannels = make(map[string]*Channel)
+var PublisherChannels = make(map[string]*models.Channel)
 
-var SubscriberChannels = make(map[string]*Channel)
+var SubscriberChannels = make(map[string]*models.Channel)
 var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool {
 		return true
 	},
-}
-
-type Channel struct {
-	PublisherToken    string      `json:"publisher_token"`
-	SubscriberToken   string      `json:"subscriber_token"`
-	SubscriberChannel chan string `json:"-"`
-}
-
-type Channels struct {
-	Channels []Channel `json:"channels"`
-}
-
-type Response struct {
-	Type    string `json:"type"`
-	Message string `json:"message"`
 }
 
 func main() {
@@ -49,7 +36,7 @@ func main() {
 	log.Fatal(http.ListenAndServe(":8844", router))
 }
 
-func GenerateChannel() Channel {
+func GenerateChannel() models.Channel {
 	hasher := md5.New()
 	timeString := strconv.FormatInt(time.Now().Unix(), 10)
 	hasher.Write([]byte(timeString))
@@ -58,14 +45,14 @@ func GenerateChannel() Channel {
 	hasher.Write([]byte(publisherKey))
 	subscriberKey := hex.EncodeToString(hasher.Sum(nil))
 
-	return Channel{
+	return models.Channel{
 		PublisherToken:  publisherKey,
 		SubscriberToken: subscriberKey,
 	}
 }
 
 func PrepareChannel(w http.ResponseWriter, r *http.Request) {
-	var channel Channel
+	var channel models.Channel
 	for {
 		channel = GenerateChannel()
 		if _, ok := PublisherChannels[channel.PublisherToken]; ok {
@@ -83,12 +70,12 @@ func PrepareChannel(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetAllChannels(w http.ResponseWriter, r *http.Request) {
-	var allChannels []Channel
+	var allChannels []models.Channel
 	for _, value := range PublisherChannels {
 		allChannels = append(allChannels, *value)
 	}
 
-	preparedJson, _ := json.Marshal(Channels{
+	preparedJson, _ := json.Marshal(models.Channels {
 		Channels: allChannels,
 	})
 
@@ -104,7 +91,7 @@ func CreateConnection(w http.ResponseWriter, r *http.Request) {
 		channel.SubscriberChannel = dataChannel
 		go PushDataToConnection(socketConnection, dataChannel)
 	} else {
-		preparedJson, _ := json.Marshal(Response{
+		preparedJson, _ := json.Marshal(models.Response{
 			Message: "Subscriber token not found",
 			Type:    "ERR",
 		})
@@ -124,22 +111,22 @@ func PushDataToConnection(socket *websocket.Conn, dataChan chan string) {
 
 func PushToConnection(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	var response Response
+	var response models.Response
 	if channel, ok := PublisherChannels[vars["publisherToken"]]; ok {
 		if channel.SubscriberChannel == nil {
-			response = Response{
+			response = models.Response{
 				Message: "Subscriber has not subscribed yet",
 				Type:    "INF",
 			}
 		} else {
 			channel.SubscriberChannel <- r.FormValue("data")
-			response = Response{
+			response = models.Response{
 				Message: "Successfully pushed data to subscriber",
 				Type:    "INF",
 			}
 		}
 	} else {
-		response = Response{
+		response = models.Response{
 			Message: "Publisher token not found",
 			Type:    "ERR",
 		}
