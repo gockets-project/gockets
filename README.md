@@ -21,7 +21,7 @@ By default daemon is listening to **8844** port. Change it in `main` function if
 ```
 `GET` `/channel` - list of all channels awaiting publishing or subscription.  
 `GET` `/channel/subscribe/{subscriber_key}` - creates a Websocket connection with channel referenced by `subscriber_key`.  
-`POST` `/channel/publish/{publisher_key}` - pushes data to a Websocket connection passed in `data` argument of request.  
+`POST` `/channel/publish/{publisher_key}` - pushes data to a Websocket connection passed in `body` of request.  
 `DELETE` `/channel/publish/{publisher_key}` - closes all Websocket connection to channel specified and deletes channel itself.
 
 ## Use case
