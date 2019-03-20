@@ -30,8 +30,10 @@ Create a channel and share a subscriber key to any Front-End application you wan
 
 ### TODO
 
-* Implementation of graceful close of Websocket connection
-* Implementation of 2-way communication with URL-Hook
+* ~~Implementation of graceful close of Websocket connection~~
+* ~~Implementation of 2-way communication with URL-Hook~~
+* Refactoring of already created methods
+* Better error handling
 
 
 
