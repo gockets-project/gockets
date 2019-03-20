@@ -13,10 +13,16 @@ Execute binary created after building.
 ## Usage
 By default daemon is listening to **8844** port. Change it in `main` function if needed.
 
-`GET` `/channel/prepare` - prepares channel and returns JSON object which contains `publisher_key` and `subscriber_key`.   
+`POST` `/channel/prepare` - prepares channel and returns JSON object which contains `publisher_key` and `subscriber_key`.  Should contain JSON object in body with hook url specified. Example:
+```json
+{
+	"subscriber_message_hook_url" : "http://localhost/log.php"
+}
+```
 `GET` `/channel` - list of all channels awaiting publishing or subscription.  
 `GET` `/channel/subscribe/{subscriber_key}` - creates a Websocket connection with channel referenced by `subscriber_key`.  
-`POST` `/channel/publish/{publisher_key}` - pushes data to a Websocket connection passed in `data` argument of request.
+`POST` `/channel/publish/{publisher_key}` - pushes data to a Websocket connection passed in `data` argument of request.  
+`DELETE` `/channel/publish/{publisher_key}` - closes all Websocket connection to channel specified and deletes channel itself.
 
 ## Use case
 
