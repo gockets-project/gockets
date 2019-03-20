@@ -9,13 +9,23 @@
 </head>
 <body>
 <label for="output">Websocket Output</label><textarea readonly id="output" cols="30" rows="10"></textarea>
-<label for="subscriber-token"></label><input type="text" id="subscriber-token">
+
+<label for="subscriber-token">Subscriber Token</label><input type="text" id="subscriber-token">
 <button id="ws-connect">Connect</button>
+<button id="ws-disconnect">Disconnect</button>
+
+<label for="message-to-send">Message Text</label><input type="text" id="message-to-send">
+<button id="ws-send">Send</button>
 <script>
     window.onload = function () {
         const outputTextArea = document.querySelector('#output');
+
         const connectBtn = document.querySelector('#ws-connect');
+        const disconnectBtn = document.querySelector('#ws-disconnect');
         const subToken = document.querySelector('#subscriber-token');
+
+        const sendBtn = document.querySelector('#ws-send');
+        const sendText = document.querySelector('#message-to-send');
 
         connectBtn.addEventListener('click', function () {
             // Create WebSocket connection.
@@ -23,15 +33,32 @@
 
             // Connection opened
             socket.addEventListener('open', function (event) {
-                textAreaText = outputTextArea.value;
+                let textAreaText = outputTextArea.value;
                 outputTextArea.value = textAreaText + "Connection opened \n";
+            });
+
+            socket.addEventListener('close', function (event) {
+                let textAreaText = outputTextArea.value;
+                outputTextArea.value = textAreaText + "Connection closed by remote \n";
             });
 
             // Listen for messages
             socket.addEventListener('message', function (event) {
-                textAreaText = outputTextArea.value;
+                let textAreaText = outputTextArea.value;
                 outputTextArea.value = textAreaText + "Got data from socket: " + event.data + "\n";
             });
+
+            sendBtn.addEventListener('click', function (event) {
+                socket.send(sendText.value);
+                let textAreaText = outputTextArea.value;
+                outputTextArea.value = textAreaText + "Send data to socket: " + sendText.value + "\n";
+            });
+
+            disconnectBtn.addEventListener('click', function (event) {
+                socket.close();
+                let textAreaText = outputTextArea.value;
+                outputTextArea.value = textAreaText + "Connection closed by client\n";
+            })
         });
     };
 </script>
