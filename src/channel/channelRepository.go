@@ -4,6 +4,7 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"encoding/json"
+	"github.com/gorilla/mux"
 	"gockets/models"
 	"net/http"
 	"strconv"
@@ -41,6 +42,22 @@ func GetAllChannels(w http.ResponseWriter, r *http.Request) {
 	preparedJson, _ := json.Marshal(models.Channels{
 		Channels: allChannels,
 	})
+
+	w.Header().Set("Content-Type", "application/json")
+	_, _ = w.Write(preparedJson)
+}
+
+func GetChannel(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	var preparedJson []byte
+	if publisherChannel, ok := PublisherChannels[vars["publisherToken"]]; ok {
+		preparedJson, _ = json.Marshal(publisherChannel)
+	} else  {
+		preparedJson, _ = json.Marshal(models.Response {
+			Message: "Publisher token not found",
+			Type:    "ERR",
+		})
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	_, _ = w.Write(preparedJson)
