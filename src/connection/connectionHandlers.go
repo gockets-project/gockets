@@ -7,9 +7,12 @@ import (
 	"gockets/models"
 	"gockets/src/callback"
 	"gockets/src/channel"
+	"gockets/src/tickerHelper"
 	"io/ioutil"
 	"log"
 	"net/http"
+	"strconv"
+	"time"
 )
 
 var upgrader = websocket.Upgrader{
@@ -22,9 +25,28 @@ func CreateConnection(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	if subscriberChannel, ok := channel.SubscriberChannels[vars["subscriberToken"]]; ok {
 		socketConnection, _ := upgrader.Upgrade(w, r, nil)
+		socketConnection.SetCloseHandler(func(code int, text string,) error {
+			switch code {
+			case 1001:
+				log.Print("Client going away")
+				break
+			case 1000:
+				log.Print("Regular shutdown")
+				break
+			default:
+				log.Print("Shutdown of connection with code " + strconv.Itoa(code))
+			}
+			subscriberChannel.Listeners--
+
+			return nil
+		})
+		socketConnection.SetPongHandler(func(appData string) error {
+			log.Fatal(socketConnection.SetReadDeadline(tickerHelper.GetPingDeadline()))
+			return nil
+		})
 		subscriberChannel.Listeners++
 
-		go pushDataToConnection(socketConnection, subscriberChannel)
+		go pushDataToConnection(socketConnection, subscriberChannel, tickerHelper.RunTicker())
 		go readDataFromConnection(socketConnection, subscriberChannel)
 		go callback.HandleSentData(subscriberChannel)
 	} else {
@@ -62,7 +84,7 @@ func readDataFromConnection(socket *websocket.Conn, channel *models.Channel) {
 	}
 }
 
-func pushDataToConnection(socket *websocket.Conn, channel *models.Channel) {
+func pushDataToConnection(socket *websocket.Conn, channel *models.Channel, ticker *time.Ticker) {
 	for {
 		select {
 		case data := <-channel.SubscriberChannel:
@@ -75,6 +97,8 @@ func pushDataToConnection(socket *websocket.Conn, channel *models.Channel) {
 				channel.ResponseChannel <- models.ChannelSignalOk
 			}
 			break
+		case <- ticker.C:
+			log.Fatal(socket.WriteControl(websocket.PingMessage, []byte{}, tickerHelper.GetPingDeadline()))
 		}
 	}
 }
