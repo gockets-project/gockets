@@ -41,7 +41,9 @@ func CreateConnection(w http.ResponseWriter, r *http.Request) {
 			return nil
 		})
 		socketConnection.SetPongHandler(func(appData string) error {
-			log.Fatal(socketConnection.SetReadDeadline(tickerHelper.GetPingDeadline()))
+			log.Print("Pong handler started")
+			_ = socketConnection.SetReadDeadline(tickerHelper.GetPingDeadline())
+			log.Print("Set read deadline")
 			return nil
 		})
 		subscriberChannel.Listeners++
@@ -98,7 +100,16 @@ func pushDataToConnection(socket *websocket.Conn, channel *models.Channel, ticke
 			}
 			break
 		case <- ticker.C:
-			log.Fatal(socket.WriteControl(websocket.PingMessage, []byte{}, tickerHelper.GetPingDeadline()))
+			log.Print("Writing ping message")
+			log.Print(time.Now().String())
+			log.Print(tickerHelper.GetPingDeadline().String())
+			_ = socket.WriteControl(websocket.PingMessage, []byte{}, tickerHelper.GetPingDeadline())
+		}
+		for {
+			_, _, err := socket.ReadMessage()
+			if err != nil {
+				return
+			}
 		}
 	}
 }
