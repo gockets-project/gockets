@@ -8,7 +8,7 @@
 
 ## Running
 
-Execute binary created after building.
+Execute binary created after building. Pass `-h` to get help about arguments
 
 ## Usage
 By default daemon is listening to **8844** port. Change it in `main` function if needed.
