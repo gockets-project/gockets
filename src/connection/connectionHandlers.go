@@ -25,30 +25,34 @@ func CreateConnection(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	if subscriberChannel, ok := channel.SubscriberChannels[vars["subscriberToken"]]; ok {
 		socketConnection, _ := upgrader.Upgrade(w, r, nil)
-		socketConnection.SetCloseHandler(func(code int, text string,) error {
+		socketConnection.SetCloseHandler(func(code int, text string, ) error {
 			switch code {
-			case 1001:
-				log.Print("Client going away")
+			case websocket.CloseGoingAway:
+				log.Print("Client going away (1001)")
 				break
-			case 1000:
-				log.Print("Regular shutdown")
+			case websocket.CloseNormalClosure:
+				log.Print("Regular shutdown (1000)")
+				break
+			case websocket.CloseNoStatusReceived:
+				log.Print("No status shutdown (1005)")
 				break
 			default:
-				log.Print("Shutdown of connection with code " + strconv.Itoa(code))
+				log.Print("Shutdown of connection with code: " + strconv.Itoa(code))
 			}
 			subscriberChannel.Listeners--
 
 			return nil
 		})
 		socketConnection.SetPongHandler(func(appData string) error {
-			log.Print("Pong handler started")
-			_ = socketConnection.SetReadDeadline(tickerHelper.GetPingDeadline())
-			log.Print("Set read deadline")
+			log.Print("Pong handler triggered")
+			dealine := tickerHelper.GetPingDeadline().Add(time.Duration(2 * time.Second))
+			_ = socketConnection.SetReadDeadline(dealine)
+			log.Print("Set read deadline to" + dealine.String())
 			return nil
 		})
 		subscriberChannel.Listeners++
 
-		go pushDataToConnection(socketConnection, subscriberChannel, tickerHelper.RunTicker())
+		go pushDataToConnection(socketConnection, subscriberChannel)
 		go readDataFromConnection(socketConnection, subscriberChannel)
 		go callback.HandleSentData(subscriberChannel)
 	} else {
@@ -67,8 +71,7 @@ func readDataFromConnection(socket *websocket.Conn, channel *models.Channel) {
 		if err != nil {
 			log.Println(err)
 			log.Println(messageType)
-			log.Println("Error caught. Removing a listener")
-			channel.Listeners--
+			log.Println("Error caught. Closing socket")
 			_ = socket.Close()
 			return
 		}
@@ -78,38 +81,51 @@ func readDataFromConnection(socket *websocket.Conn, channel *models.Channel) {
 			log.Println("Got a text message from listener")
 			channel.SubscriberMessagesChannel <- string(p)
 			break
-		case websocket.CloseMessage:
-			log.Println("Listener closed connection")
-			channel.Listeners--
-			_ = socket.Close()
+		default:
+			log.Println("Unsupported message received. Ignoring...")
+			break
 		}
 	}
 }
 
-func pushDataToConnection(socket *websocket.Conn, channel *models.Channel, ticker *time.Ticker) {
+func pushDataToConnection(socket *websocket.Conn, channel *models.Channel) {
+	log.Print("Routine started")
+	tickerChan := tickerHelper.RunTicker()
+	log.Print("Ticker started")
 	for {
 		select {
 		case data := <-channel.SubscriberChannel:
+			log.Print("Received data: " + data)
 			_ = socket.WriteMessage(websocket.TextMessage, []byte(data))
+
+			log.Print("Data sent")
 			break
 		case signal := <-channel.PublisherChannel:
 			switch signal {
 			case models.ChannelCloseSignal:
+				log.Print("Received close signal")
+				_ = socket.WriteControl(websocket.CloseMessage, []byte{}, tickerHelper.GetPingDeadline())
 				_ = socket.Close()
 				channel.ResponseChannel <- models.ChannelSignalOk
+				log.Print("Routine closed")
+				return
 			}
 			break
-		case <- ticker.C:
+		case tickerTime := <-tickerChan.C:
+			log.Print("Got ticker push: " + tickerTime.String())
 			log.Print("Writing ping message")
 			log.Print(time.Now().String())
 			log.Print(tickerHelper.GetPingDeadline().String())
-			_ = socket.WriteControl(websocket.PingMessage, []byte{}, tickerHelper.GetPingDeadline())
-		}
-		for {
-			_, _, err := socket.ReadMessage()
+			err := socket.WriteControl(websocket.PingMessage, []byte{}, tickerHelper.GetPingDeadline())
 			if err != nil {
+				log.Print("Cannot ping client")
+				log.Print(err)
+				log.Print("Removing listener")
+				channel.Listeners--
+				log.Print("Closing routine")
 				return
 			}
+			log.Print("Wrote ping message")
 		}
 	}
 }
@@ -124,8 +140,8 @@ func PushToConnection(w http.ResponseWriter, r *http.Request) {
 				Type:    "INF",
 			}
 		} else {
+			body, _ := ioutil.ReadAll(r.Body)
 			for i := 0; i < publisherChannel.Listeners; i++ {
-				body, _ := ioutil.ReadAll(r.Body)
 				publisherChannel.SubscriberChannel <- string(body)
 			}
 			response = models.Response{
