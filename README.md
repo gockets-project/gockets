@@ -8,7 +8,7 @@
 
 ## Running
 
-Execute binary created after building.
+Execute binary created after building. Pass `-h` to get help about arguments
 
 ## Usage
 By default daemon is listening to **8844** port. Change it in `main` function if needed.
@@ -20,8 +20,9 @@ By default daemon is listening to **8844** port. Change it in `main` function if
 }
 ```
 `GET` `/channel` - list of all channels awaiting publishing or subscription.  
+`GET` `/channel/{publisher_key}` - get specific channel data.    
 `GET` `/channel/subscribe/{subscriber_key}` - creates a Websocket connection with channel referenced by `subscriber_key`.  
-`POST` `/channel/publish/{publisher_key}` - pushes data to a Websocket connection passed in `data` argument of request.  
+`POST` `/channel/publish/{publisher_key}` - pushes data to a Websocket connection passed in `body` of request.  
 `DELETE` `/channel/publish/{publisher_key}` - closes all Websocket connection to channel specified and deletes channel itself.
 
 ## Use case
@@ -30,8 +31,10 @@ Create a channel and share a subscriber key to any Front-End application you wan
 
 ### TODO
 
-* Implementation of graceful close of Websocket connection
-* Implementation of 2-way communication with URL-Hook
+* ~~Implementation of graceful close of Websocket connection~~
+* ~~Implementation of 2-way communication with URL-Hook~~
+* Refactoring of already created methods
+* Better error handling
 
 
 

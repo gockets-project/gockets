@@ -46,6 +46,7 @@
             socket.addEventListener('message', function (event) {
                 let textAreaText = outputTextArea.value;
                 outputTextArea.value = textAreaText + "Got data from socket: " + event.data + "\n";
+                console.log(event)
             });
 
             sendBtn.addEventListener('click', function (event) {
