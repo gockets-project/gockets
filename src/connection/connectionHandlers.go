@@ -1,9 +1,9 @@
 package connection
 
 import (
-	"encoding/json"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
+	"gockets/helpers"
 	"gockets/models"
 	"gockets/src/callback"
 	"gockets/src/channel"
@@ -25,6 +25,7 @@ func CreateConnection(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	if subscriberChannel, ok := channel.SubscriberChannels[vars["subscriberToken"]]; ok {
 		socketConnection, _ := upgrader.Upgrade(w, r, nil)
+		// channel for socket
 		socketConnection.SetCloseHandler(func(code int, text string, ) error {
 			switch code {
 			case websocket.CloseGoingAway:
@@ -38,18 +39,17 @@ func CreateConnection(w http.ResponseWriter, r *http.Request) {
 				break
 			default:
 				log.Print("Shutdown of connection with code: " + strconv.Itoa(code))
+
+				// pass to socket connection shutdown signal
 			}
-
-			_ = socketConnection.Close()
-			log.Print("Corrupting connection to prevent further reads.")
-
 			return nil
 		})
 		socketConnection.SetPongHandler(func(appData string) error {
 			log.Print("Pong handler triggered")
-			dealine := tickerHelper.GetPingDeadline().Add(time.Duration(2 * time.Second))
-			_ = socketConnection.SetReadDeadline(dealine)
-			log.Print("Set read deadline to" + dealine.String())
+			deadline := tickerHelper.GetPingDeadline().Add(time.Duration(2 * time.Second))
+			_ = socketConnection.SetReadDeadline(deadline)
+			// if connection corrupt send shutdown signal
+			log.Print("Set read deadline to" + deadline.String())
 			return nil
 		})
 		subscriberChannel.Listeners++
@@ -58,12 +58,10 @@ func CreateConnection(w http.ResponseWriter, r *http.Request) {
 		go readDataFromConnection(socketConnection, subscriberChannel)
 		go callback.HandleSentData(subscriberChannel)
 	} else {
-		preparedJson, _ := json.Marshal(models.Response{
+		helpers.WriteJsonResponse(w, models.Response{
 			Message: "Subscriber token not found",
 			Type:    "ERR",
 		})
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write(preparedJson)
 	}
 }
 
@@ -73,7 +71,7 @@ func readDataFromConnection(socket *websocket.Conn, channel *models.Channel) {
 		if err != nil {
 			log.Println(err)
 			log.Println(messageType)
-			log.Println("Error caught. Closing socket")
+			log.Println("Error caught. Closing socket.go")
 			_ = socket.Close()
 			return
 		}
@@ -157,10 +155,7 @@ func PushToConnection(w http.ResponseWriter, r *http.Request) {
 			Type:    "ERR",
 		}
 	}
-
-	preparedJson, _ := json.Marshal(response)
-	w.Header().Set("Content-Type", "application/json")
-	_, _ = w.Write(preparedJson)
+	helpers.WriteJsonResponse(w, response)
 }
 
 func CloseConnection(w http.ResponseWriter, r *http.Request) {
@@ -187,7 +182,5 @@ func CloseConnection(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	preparedJson, _ := json.Marshal(response)
-	w.Header().Set("Content-Type", "application/json")
-	_, _ = w.Write(preparedJson)
+	helpers.WriteJsonResponse(w, response)
 }
