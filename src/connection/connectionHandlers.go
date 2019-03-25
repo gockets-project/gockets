@@ -39,7 +39,8 @@ func CreateConnection(w http.ResponseWriter, r *http.Request) {
 			default:
 				log.Print("Shutdown of connection with code: " + strconv.Itoa(code))
 			}
-			subscriberChannel.Listeners--
+
+			log.Print("Corrupting connection to prevent further reads.")
 
 			return nil
 		})
