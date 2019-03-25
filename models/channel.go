@@ -10,8 +10,6 @@ type Channel struct {
 	SubscriberMessageHookUrl	string		`json:"subscriber_message_hook_url"`
 	Listeners					int			`json:"listeners"`
 
-	Sockets						map[string]Socke
-
 	SubscriberChannel 			chan string `json:"-"`
 	SubscriberMessagesChannel	chan string `json:"-"`
 	PublisherChannel  			chan int	`json:"-"`
