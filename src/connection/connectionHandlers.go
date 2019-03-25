@@ -40,6 +40,7 @@ func CreateConnection(w http.ResponseWriter, r *http.Request) {
 				log.Print("Shutdown of connection with code: " + strconv.Itoa(code))
 			}
 
+			_ = socketConnection.Close()
 			log.Print("Corrupting connection to prevent further reads.")
 
 			return nil
