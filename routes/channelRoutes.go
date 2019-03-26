@@ -4,12 +4,13 @@ import (
 	"github.com/gorilla/mux"
 	"gockets/src/channel"
 	"gockets/src/connection"
+	"gockets/src/logger"
 )
 
 func InitRoutes() *mux.Router {
 	router := mux.NewRouter()
 	initChannelRoutes(router)
-
+	ll.Log.Debug("Routes initialized")
 	return router
 }
 
