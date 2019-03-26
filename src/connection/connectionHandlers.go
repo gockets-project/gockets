@@ -7,11 +7,11 @@ import (
 	"gockets/models"
 	"gockets/src/callback"
 	"gockets/src/channel"
+	"gockets/src/logger"
 	"gockets/src/tickerHelper"
 	"io/ioutil"
 	"log"
 	"net/http"
-	"strconv"
 	"time"
 )
 
@@ -24,47 +24,49 @@ var upgrader = websocket.Upgrader{
 func CreateConnection(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	if subscriberChannel, ok := channel.SubscriberChannels[vars["subscriberToken"]]; ok {
+		ll.Log.Debug("Establishing WS connection")
 		conn, _ := upgrader.Upgrade(w, r, nil)
-		log.Print("Connection upgraded")
+		ll.Log.Debug("Connection upgraded")
 		ccc := make(chan int)
-		conn.SetCloseHandler(func(code int, text string, ) error {
+		conn.SetCloseHandler(func(code int, text string) error {
 			switch code {
 			case websocket.CloseGoingAway:
-				log.Print("Client going away (1001)")
+				ll.Log.Debug("Client going away (1001)")
 				break
 			case websocket.CloseNormalClosure:
-				log.Print("Regular shutdown (1000)")
+				ll.Log.Debug("Regular shutdown (1000)")
 				break
 			case websocket.CloseNoStatusReceived:
-				log.Print("No status shutdown (1005)")
+				ll.Log.Debug("No status shutdown (1005)")
 				break
 			default:
-				log.Print("Shutdown of connection with code: " + strconv.Itoa(code))
+				ll.Log.Debugf("Shutdown of connection with code: %d", code)
 				break
 				// pass to socket connection shutdown signal
 			}
-			log.Print("Sending shutdown signal to pushing routine")
+			ll.Log.Infof("Sending shutdown signal. Shutdown code: %d", code)
 
 			// signal 1 is for client-side shutdown
 			ccc <- 1
 
 			return nil
 		})
-		log.Print("Created CLOSE handler")
+		ll.Log.Debug("Created CLOSE handler")
+
 		conn.SetPongHandler(func(appData string) error {
-			log.Print("Pong handler triggered")
+			ll.Log.Debug("Pong handler triggered")
 			deadline := tickerHelper.GetPingDeadline().Add(time.Duration(2 * time.Second))
 			_ = conn.SetReadDeadline(deadline)
-			// if connection corrupt send shutdown signal
-			log.Print("Set read deadline to" + deadline.String())
+			ll.Log.Debug("Set read deadline to %s", deadline.String())
 			return nil
 		})
+		ll.Log.Debug("Created PONG handler")
 
-		log.Print("Created PONG handler")
 		subscriberChannel.Listeners++
-		log.Print("Started PUSH routine")
+
+		ll.Log.Debug("Started PUSH routine")
 		go pushDataToConnection(conn, subscriberChannel, ccc)
-		log.Print("Started CALLBACK routine")
+		ll.Log.Debug("Started CALLBACK routine")
 		go callback.HandleSentData(subscriberChannel)
 	} else {
 		helpers.WriteJsonResponse(w, models.Response{
@@ -76,46 +78,41 @@ func CreateConnection(w http.ResponseWriter, r *http.Request) {
 
 func readDataFromConnection(socket *websocket.Conn, channel *models.Channel, pcc chan int) {
 	for {
-		log.Print("Reading from socket")
-		time.Sleep(1 * time.Second)
-		log.Print()
 		messageType, p, err := socket.ReadMessage()
 		if err != nil {
-			log.Println("Reading error caught. Closing READ routine")
-			log.Println(err)
-			log.Println(messageType)
+			ll.Log.Debug("Reading error caught. Closing READ routine")
+			pcc <- 1
 			return
 		}
 
 		switch messageType {
 		case websocket.TextMessage:
-			log.Println("Got a text message from listener")
+			ll.Log.Debugf("Got a text message from listener: %s", string(p))
 			channel.SubscriberMessagesChannel <- string(p)
 			break
 		default:
-			log.Println("Unsupported message received. Ignoring...")
+			ll.Log.Debugf("Got unsupported message. Ignoring...")
 			break
 		}
 	}
 }
 
 func pushDataToConnection(conn *websocket.Conn, ch *models.Channel, ccc chan int) {
-	log.Print("Routine started")
 	tickerChan := tickerHelper.RunTicker()
-	log.Print("Ticker started")
+	ll.Log.Debug("PUSH routine ticker started")
 	pcc := make(chan int)
 	log.Print("Ticker started")
 	go readDataFromConnection(conn, ch, pcc)
-	log.Print("Created READER routine")
+	ll.Log.Debug("Created READER routine")
 	for {
 		select {
-		case data := <- ch.SubscriberChannel:
+		case data := <-ch.SubscriberChannel:
 			log.Print("Received data: " + data)
 			_ = conn.WriteMessage(websocket.TextMessage, []byte(data))
 
 			log.Print("Data sent")
 			break
-		case signal := <- ch.PublisherChannel:
+		case signal := <-ch.PublisherChannel:
 			switch signal {
 			case models.ChannelCloseSignal:
 				log.Print("Received close signal")
@@ -126,32 +123,31 @@ func pushDataToConnection(conn *websocket.Conn, ch *models.Channel, ccc chan int
 				return
 			}
 			break
-		case tickerTime := <-tickerChan.C:
-			log.Print("Got ticker push: " + tickerTime.String())
-			log.Print("Writing ping message")
-			log.Print(time.Now().String())
-			log.Print(tickerHelper.GetPingDeadline().String())
+		case <-tickerChan.C:
+			ll.Log.Debug("Got ticker push")
+			ll.Log.Debug("Writing ping message")
 			err := conn.WriteControl(websocket.PingMessage, []byte{}, tickerHelper.GetPingDeadline())
 			if err != nil {
-				log.Print("Cannot ping client")
-				log.Print(err)
-				log.Print("Removing listener")
+				ll.Log.Info("Cannot ping client. Considering it disconnected")
 				handleConnClose(conn, ch)
-				log.Print("Closing routine")
+				ll.Log.Debug("Closing PUSH routine")
 				return
 			}
-			log.Print("Wrote ping message")
+			ll.Log.Debug("Wrote ping message successfully")
 			break
-		case <- ccc:
-			log.Print("Received client-side shutdown signal")
-			log.Print("Closing routine")
+		case <-ccc:
+			ll.Log.Info("PUSH routine got client disconnect message. Closing PUSH routine")
+			handleConnClose(conn, ch)
+			return
+		case <-pcc:
+			ll.Log.Info("PUSH routine got shutdown message from READ routine. Closing PUSH routine")
 			handleConnClose(conn, ch)
 			return
 		}
 	}
 }
 
-func handleConnClose(conn *websocket.Conn, ch *models.Channel)  {
+func handleConnClose(conn *websocket.Conn, ch *models.Channel) {
 	_ = conn.Close()
 	ch.Listeners--
 }
