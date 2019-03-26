@@ -52,8 +52,8 @@ func GetChannel(w http.ResponseWriter, r *http.Request) {
 	var preparedJson []byte
 	if publisherChannel, ok := PublisherChannels[vars["publisherToken"]]; ok {
 		preparedJson, _ = json.Marshal(publisherChannel)
-	} else  {
-		preparedJson, _ = json.Marshal(models.Response {
+	} else {
+		preparedJson, _ = json.Marshal(models.Response{
 			Message: "Publisher token not found",
 			Type:    "ERR",
 		})

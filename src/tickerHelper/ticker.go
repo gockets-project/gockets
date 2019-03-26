@@ -9,7 +9,7 @@ func SetPingInterval(intervalSec int) int {
 	return pingInterval
 }
 
-func GetPingInterval() int  {
+func GetPingInterval() int {
 	return pingInterval
 }
 
