@@ -10,6 +10,18 @@
 
 Execute binary created after building. Pass `-h` to get help about arguments
 
+  `-localhost-lock`  
+        Lock access to all administrative routes only to LOCALHOST
+          
+  `-log-level INT`  
+        Level of logging. 1 - Info and error. 2 - Error only. 3 - All info with debug (default 1)
+          
+  `-ping-interval INT`  
+        Interval of ping request and time for pong response for clients in seconds (default 60)  
+        
+  `-port INT`  
+        Port of a server (default 8844)  
+
 ## Usage
 By default daemon is listening to **8844** port. Change it in `main` function if needed.
 
