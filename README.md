@@ -10,8 +10,8 @@
 
 Execute binary created after building. Pass `-h` to get help about arguments
 
-  `-localhost-lock`  
-        Lock access to all administrative routes only from LOCALHOST
+   `-host-name string`  
+        Lock access to all administrative routes only to access from specific hostname (default "localhost")  
           
   `-log-level INT`  
         Level of logging. 1 - Info and error. 2 - Error only. 3 - All info with debug (default 1)
@@ -21,7 +21,6 @@ Execute binary created after building. Pass `-h` to get help about arguments
         
   `-port INT`  
         Port of a server (default 8844)  
-wsd cawdc
 ## Usage
 By default daemon is listening to **8844** port. Change it in `main` function if needed.
 
