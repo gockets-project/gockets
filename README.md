@@ -21,7 +21,6 @@ Execute binary created after building. Pass `-h` to get help about arguments
         
   `-port INT`  
         Port of a server (default 8844)  
-wsd cawdc
 ## Usage
 By default daemon is listening to **8844** port. Change it in `main` function if needed.
 
