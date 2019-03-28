@@ -17,7 +17,7 @@ func InitRoutes(lhRestricted bool) *mux.Router {
 func initChannelRoutes(r *mux.Router, lhRestricted bool) {
 	r.PathPrefix("channel")
 	if lhRestricted {
-		cc := r.Host("localhost").Subrouter()
+		cc := r.Host("localhost:{port:[0-9]+}").Subrouter()
 		cc.HandleFunc("/channel/prepare", channel.PrepareChannel).Methods("POST")
 		cc.HandleFunc("/channel", channel.GetAllChannels).Methods("GET")
 		cc.HandleFunc("/channel/{publisherToken}", channel.GetChannel).Methods("GET")
@@ -33,5 +33,6 @@ func initChannelRoutes(r *mux.Router, lhRestricted bool) {
 		r.HandleFunc("/channel/publish/{publisherToken}", controllers.CloseConnection).Methods("DELETE")
 	}
 
+	r.HandleFunc("/info", controllers.CreateConnection)
 	r.HandleFunc("/channel/subscribe/{subscriberToken}", controllers.CreateConnection)
 }

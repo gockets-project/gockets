@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"github.com/gorilla/mux"
 	"gockets/models"
+	"gockets/src/services/logger"
 	"net/http"
 	"strconv"
 	"time"
@@ -16,6 +17,7 @@ var PublisherChannels = make(map[string]*models.Channel)
 var SubscriberChannels = make(map[string]*models.Channel)
 
 func PrepareChannel(w http.ResponseWriter, r *http.Request) {
+	ll.Log.Debugf("Channel prepared by: %s", r.Host)
 	var channel models.Channel
 	for {
 		channel = generateChannel(r)
