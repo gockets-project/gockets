@@ -20,7 +20,7 @@ func flagPass(setupObject *models.Setup) {
 	portIntPtr := flag.Int("port", 8844, "Port of a server")
 	pingIntPtr := flag.Int("ping-interval", 60, "Interval of ping request and time for pong response for clients in seconds")
 	logLvlPtr := flag.Int("log-level", 1, "Level of logging. 1 - Info and error. 2 - Error only. 3 - All info with debug")
-	llLockPtr := flag.Bool("localhost-lock", false, "Lock access to all administrative routes only to LOCALHOST")
+	llLockPtr := flag.String("host-name", "localhost", "Lock access to all administrative routes only to access from specific hostname")
 	if *logLvlPtr < 1 || *logLvlPtr > 3 {
 		panic("Invalid argument passed to log-level")
 	}
@@ -28,7 +28,7 @@ func flagPass(setupObject *models.Setup) {
 	setupObject.Port = *portIntPtr
 	setupObject.PingDelay = *pingIntPtr
 	setupObject.LogLevel = *logLvlPtr
-	setupObject.LocalhostLock = *llLockPtr
+	setupObject.AdminHostname = *llLockPtr
 }
 
 func initPackages(setupObject models.Setup) {

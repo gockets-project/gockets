@@ -10,7 +10,7 @@ import (
 
 func main() {
 	setupObject := setup.Setup()
-	router := routes.InitRoutes(setupObject.LocalhostLock)
+	router := routes.InitRoutes(setupObject.AdminHostname, setupObject.Port)
 	port := ":" + strconv.Itoa(setupObject.Port)
 	ll.Log.Infof("Server started on %s", port)
 	err := http.ListenAndServe(port, router)
