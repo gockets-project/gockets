@@ -1,7 +1,8 @@
 package models
 
 type Setup struct {
-	Port      int `json:"port"`
-	PingDelay int `json:"ping_delay"`
-	LogLevel  int `json:"log_level"`
+	Port          int  `json:"port"`
+	PingDelay     int  `json:"ping_delay"`
+	LogLevel      int  `json:"log_level"`
+	LocalhostLock bool `json:"localhost_lock"`
 }
