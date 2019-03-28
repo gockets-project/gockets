@@ -11,7 +11,7 @@
 Execute binary created after building. Pass `-h` to get help about arguments
 
   `-localhost-lock`  
-        Lock access to all administrative routes only to LOCALHOST
+        Lock access to all administrative routes only from LOCALHOST
           
   `-log-level INT`  
         Level of logging. 1 - Info and error. 2 - Error only. 3 - All info with debug (default 1)
