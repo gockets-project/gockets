@@ -46,6 +46,10 @@ Create a channel and share a subscriber key to any Front-End application you wan
 * ~~Implementation of 2-way communication with URL-Hook~~
 * Refactoring of already created methods
 * Better error handling
+* Callback hook refactor
+* Tests
+* Binary data support
+
 
 
 
