@@ -5,62 +5,98 @@
     <meta name="viewport"
           content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <title>Document</title>
+    <title>Gockets Demonstration</title>
+    <style>
+        .flex-row {
+            display: flex;
+            flex-direction: row;
+            flex-wrap: wrap;
+        }
+        .flex-column {
+            display: flex;
+            flex-direction: column;
+            margin-right: 20px;
+            min-width: 300px;
+        }
+        label, input, button {
+            margin-bottom: 10px;
+        }
+        .buttons-row button {
+            width: 50%;
+        }
+    </style>
 </head>
-<body>
-<label for="output">Websocket Output</label><textarea readonly id="output" cols="30" rows="10"></textarea>
+<body class="flex-row">
+    <div class="flex-column">
+        <label for="output">Websocket Output:</label>
+        <textarea readonly id="output" cols="50" rows="15"></textarea>
+    </div>
 
-<label for="subscriber-token">Subscriber Token</label><input type="text" id="subscriber-token">
-<button id="ws-connect">Connect</button>
-<button id="ws-disconnect">Disconnect</button>
+    <div class="flex-column">
+        <label for="subscriber-token">Subscriber Token:</label><input type="text" id="subscriber-token">
+        <div class="flex-row buttons-row">
+            <button id="ws-connect">Connect</button>
+            <button id="ws-disconnect">Disconnect</button>
+        </div>
 
-<label for="message-to-send">Message Text</label><input type="text" id="message-to-send">
-<button id="ws-send">Send</button>
+        <label for="message-to-send">Message Text</label><input type="text" id="message-to-send">
+        <button id="ws-send">Send</button>
+    </div>
 <script>
     window.onload = function () {
-        const outputTextArea = document.querySelector('#output');
-
-        const connectBtn = document.querySelector('#ws-connect');
-        const disconnectBtn = document.querySelector('#ws-disconnect');
-        const subToken = document.querySelector('#subscriber-token');
-
-        const sendBtn = document.querySelector('#ws-send');
-        const sendText = document.querySelector('#message-to-send');
-
+        const outputTextArea = document.getElementById('output');
+        const connectBtn = document.getElementById('ws-connect');
+        const disconnectBtn = document.getElementById('ws-disconnect');
+        const subToken = document.getElementById('subscriber-token');
+        const sendBtn = document.getElementById('ws-send');
+        const sendText = document.getElementById('message-to-send');
         connectBtn.addEventListener('click', function () {
             // Create WebSocket connection.
             const socket = new WebSocket('ws://localhost:8844/channel/subscribe/' + subToken.value);
-
             // Connection opened
             socket.addEventListener('open', function (event) {
                 let textAreaText = outputTextArea.value;
-                outputTextArea.value = textAreaText + "Connection opened \n";
+                outputTextArea.value = textAreaText + getCurrentTime() + " Connection opened \n";
+                console.log(event);
             });
-
             socket.addEventListener('close', function (event) {
                 let textAreaText = outputTextArea.value;
-                outputTextArea.value = textAreaText + "Connection closed by remote \n";
+                outputTextArea.value = textAreaText + getCurrentTime() + " Connection closed by remote \n";
+                console.log(event);
             });
-
             // Listen for messages
             socket.addEventListener('message', function (event) {
                 let textAreaText = outputTextArea.value;
-                outputTextArea.value = textAreaText + "Got data from socket: " + event.data + "\n";
-                console.log(event)
+                outputTextArea.value = textAreaText + getCurrentTime() + " Got data from socket: \n" + event.data + "\n";
+                console.log(event);
             });
-
             sendBtn.addEventListener('click', function (event) {
                 socket.send(sendText.value);
                 let textAreaText = outputTextArea.value;
-                outputTextArea.value = textAreaText + "Send data to socket: " + sendText.value + "\n";
+                outputTextArea.value = textAreaText + getCurrentTime() + " Send data to socket: " + sendText.value + "\n";
             });
-
             disconnectBtn.addEventListener('click', function (event) {
                 socket.close();
                 let textAreaText = outputTextArea.value;
-                outputTextArea.value = textAreaText + "Connection closed by client\n";
+                outputTextArea.value = textAreaText + getCurrentTime() + " Connection closed by client\n";
             })
         });
+        function getCurrentTime() {
+            const current = new Date();
+            let hours = current.getHours();
+            let minutes = current.getMinutes();
+            let seconds = current.getSeconds();
+            if (hours < 10) {
+                hours = '0' + hours;
+            }
+            if (minutes < 10) {
+                minutes = '0' + minutes;
+            }
+            if (seconds < 10) {
+                seconds = '0' + seconds;
+            }
+            return '[' + hours + ':' + minutes + ':' + seconds + ']';
+        }
     };
 </script>
 </body>
