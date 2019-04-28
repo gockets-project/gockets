@@ -43,7 +43,6 @@ func CloseConnection(w http.ResponseWriter, r *http.Request) {
 			Message: "Publisher token not found",
 			Type:    "ERR",
 		}
-		w.WriteHeader(http.StatusNotFound)
 	}
 
 	helpers.WriteJsonResponse(w, response)
@@ -128,7 +127,6 @@ func PushToConnection(w http.ResponseWriter, r *http.Request) {
 			Message: "Publisher token not found",
 			Type:    "ERR",
 		}
-		w.WriteHeader(http.StatusNotFound)
 	}
 	helpers.WriteJsonResponse(w, response)
 }
