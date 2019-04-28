@@ -52,6 +52,7 @@ func GetAllChannels(w http.ResponseWriter, r *http.Request) {
 func GetChannel(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	var preparedJson []byte
+	w.Header().Set("Content-Type", "application/json")
 	if publisherChannel, ok := PublisherChannels[vars["publisherToken"]]; ok {
 		preparedJson, _ = json.Marshal(publisherChannel)
 	} else {
@@ -59,9 +60,9 @@ func GetChannel(w http.ResponseWriter, r *http.Request) {
 			Message: "Publisher token not found",
 			Type:    "ERR",
 		})
+		w.WriteHeader(http.StatusNotFound)
 	}
 
-	w.Header().Set("Content-Type", "application/json")
 	_, _ = w.Write(preparedJson)
 }
 
