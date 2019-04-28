@@ -22,7 +22,8 @@ Execute binary created after building. Pass `-h` to get help about arguments
   `-port INT`  
         Port of a server (default 8844)  
 ## Usage
-For convenience [Postman collection](https://documenter.getpostman.com/view/4929623/S1LpbBvp) was published with latest API reference.
+For convenience [Postman collection](https://documenter.getpostman.com/view/4929623/S1LpbBvp) was published with latest API reference.  
+
 By default daemon is listening to **8844** port. Change it in `main` function if needed.
 
 `POST` `/channel/prepare` - prepares channel and returns JSON object which contains `publisher_key` and `subscriber_key`.  May contain JSON object in body with hook url specified. Example:
