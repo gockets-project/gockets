@@ -6,10 +6,11 @@ import (
 	"net/http"
 )
 
-func WriteJsonResponse(w http.ResponseWriter, o interface{}) {
+func WriteJsonResponse(w http.ResponseWriter, o interface{}, respCode int) {
 	preparedJson, _ := json.Marshal(o)
 	w.Header().Set("Content-Type", "application/json")
-	_, _ = w.Write(preparedJson)
+	w.Write(preparedJson)
+	w.WriteHeader(respCode)
 }
 
 func LogError(e error) {
