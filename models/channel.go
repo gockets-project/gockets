@@ -7,7 +7,7 @@ const ChannelSignalError = 1
 type Channel struct {
 	PublisherToken           string `json:"publisher_token"`
 	SubscriberToken          string `json:"subscriber_token"`
-	SubscriberMessageHookUrl string `json:"subscriber_message_hook_url"`
+	SubscriberMessageHookUrl *string `json:"subscriber_message_hook_url"`
 	Listeners                int    `json:"listeners"`
 
 	SubscriberChannel         chan string `json:"-"`

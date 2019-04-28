@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/gorilla/mux"
 	"gockets/src/controllers"
-	"gockets/src/services/channel"
 	"gockets/src/services/logger"
 )
 
@@ -19,9 +18,9 @@ func initChannelRoutes(r *mux.Router, hostName string, port int) {
 	fullHostname := fmt.Sprintf("%s:%d", hostName, port)
 
 	cc := r.Host(fullHostname).Subrouter()
-	cc.HandleFunc("/channel/prepare", channel.PrepareChannel).Methods("POST")
-	cc.HandleFunc("/channel", channel.GetAllChannels).Methods("GET")
-	cc.HandleFunc("/channel/{publisherToken}", channel.GetChannel).Methods("GET")
+	cc.HandleFunc("/channel/prepare", controllers.PrepareChannel).Methods("POST")
+	cc.HandleFunc("/channel", controllers.GetAllChannels).Methods("GET")
+	cc.HandleFunc("/channel/{publisherToken}", controllers.GetChannel).Methods("GET")
 	cc.HandleFunc("/channel/publish/{publisherToken}", controllers.PushToConnection).Methods("POST")
 	cc.HandleFunc("/channel/publish/{publisherToken}", controllers.CloseConnection).Methods("DELETE")
 	ll.Log.Debugf("Locked administrative routes to access from %s")
