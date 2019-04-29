@@ -15,7 +15,7 @@ func InitRoutes(hostName string, port int) *mux.Router {
 }
 
 func initChannelRoutes(r *mux.Router, hostName string, port int) {
-	fullHostname := fmt.Sprintf("%s:%d", hostName, port)
+	fullHostname := fmt.Sprintf("{hostname:[%s]+|[127.0.0.1]+|[localhost]+}:%d", hostName, port)
 
 	cc := r.Host(fullHostname).Subrouter()
 	cc.HandleFunc("/channel/prepare", controllers.PrepareChannel).Methods("POST")
