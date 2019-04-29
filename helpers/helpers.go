@@ -11,8 +11,8 @@ import (
 func WriteJsonResponse(w http.ResponseWriter, o interface{}, respCode int) {
 	preparedJson, _ := json.Marshal(o)
 	w.Header().Set("Content-Type", "application/json")
-	w.Write(preparedJson)
 	w.WriteHeader(respCode)
+	w.Write(preparedJson)
 }
 
 func LogError(e error) {
