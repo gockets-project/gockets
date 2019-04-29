@@ -3,8 +3,10 @@ package routes
 import (
 	"fmt"
 	"github.com/gorilla/mux"
+	"gockets/helpers"
 	"gockets/src/controllers"
 	"gockets/src/services/logger"
+	"strings"
 )
 
 func InitRoutes(hostName string, port int) *mux.Router {
@@ -15,7 +17,7 @@ func InitRoutes(hostName string, port int) *mux.Router {
 }
 
 func initChannelRoutes(r *mux.Router, hostName string, port int) {
-	fullHostname := fmt.Sprintf("{hostname:[%s]+|[127.0.0.1]+|[localhost]+}:%d", hostName, port)
+	fullHostname := fmt.Sprintf("{hostname:%s}:%d", createHostnameRegex(hostName), port)
 
 	cc := r.Host(fullHostname).Subrouter()
 	cc.HandleFunc("/channel/prepare", controllers.PrepareChannel).Methods("POST")
@@ -26,4 +28,26 @@ func initChannelRoutes(r *mux.Router, hostName string, port int) {
 	ll.Log.Debugf("Locked administrative routes to access from %s")
 
 	r.HandleFunc("/channel/subscribe/{subscriberToken}", controllers.CreateConnection)
+}
+
+func createHostnameRegex(hostname string) string {
+	var hostnames = []string{
+		"localhost",
+	}
+	if  hostname != "localhost" {
+		hostnames = append(hostnames, hostname)
+	}
+
+	var regexHostnames []string
+
+	for _, h := range hostnames {
+		ip, err := helpers.LookupName(h)
+		if err != nil {
+			continue
+		}
+		regexHostnames = append(regexHostnames, fmt.Sprintf("[%s]+", ip))
+		regexHostnames = append(regexHostnames, fmt.Sprintf("[%s]+", h))
+	}
+
+	return strings.Join(regexHostnames, "|")
 }
