@@ -6,7 +6,6 @@ import (
 	"gockets/helpers"
 	"gockets/src/controllers"
 	"gockets/src/services/logger"
-	"log"
 	"strings"
 )
 
@@ -49,6 +48,6 @@ func createHostnameRegex(hostname string) string {
 		regexHostnames = append(regexHostnames, fmt.Sprintf("[%s]+", ip))
 		regexHostnames = append(regexHostnames, fmt.Sprintf("[%s]+", h))
 	}
-	log.Print(regexHostnames)
+
 	return strings.Join(regexHostnames, "|")
 }
