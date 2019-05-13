@@ -2,6 +2,7 @@ package setup
 
 import (
 	"flag"
+
 	"github.com/spf13/viper"
 	"gockets/src/services/logger"
 	"gockets/src/services/tickerHelper"
@@ -31,7 +32,11 @@ func Init() {
 func flagPass() {
 	configPtr := flag.String("configPath", "config.yml", "Path to config file")
 	flag.Parse()
-	viper.AddConfigPath(*configPtr)
+	viper.SetConfigFile(*configPtr)
+	err := viper.ReadInConfig()
+	if err != nil {
+		panic(err)
+	}
 }
 
 func initPackages() {

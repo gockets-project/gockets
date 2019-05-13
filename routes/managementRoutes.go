@@ -14,13 +14,21 @@ func InitManagementRoutes(r *gin.Engine) {
 			mr.Use(middleware.NewManagementRouteProtection())
 		}
 		mr.POST("prepare", controllers.PrepareChannel)
-		mr.GET("show/", controllers.GetAllChannels)
-		mr.GET("show/:publisherToken", controllers.GetChannel)
+		sr := mr.Group("show")
+		{
+			sr.GET("", controllers.GetAllChannels)
+			sr.GET(":publisherToken", controllers.GetChannel)
+		}
 
 		pr := mr.Group("publish")
 		{
 			pr.POST(":publisherToken", controllers.PushToConnection)
 			pr.DELETE(":publisherToken", controllers.CloseConnection)
+		}
+
+		er := mr.Group("edit")
+		{
+			er.PATCH(":publisherToken", controllers.EditChannel)
 		}
 	}
 }

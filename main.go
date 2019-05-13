@@ -1,11 +1,12 @@
 package main
 
 import (
+	"strconv"
+
 	"github.com/spf13/viper"
 	"gockets/routes"
 	"gockets/setup"
 	"gockets/src/services/logger"
-	"strconv"
 )
 
 func main() {

@@ -1,9 +1,11 @@
 package controllers
 
 import (
-	"crypto/md5"
-	"encoding/hex"
-	"encoding/json"
+	"io/ioutil"
+	"net/http"
+	"regexp"
+	"time"
+
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 	"gockets/models"
@@ -11,10 +13,6 @@ import (
 	"gockets/src/services/connection"
 	"gockets/src/services/logger"
 	"gockets/src/services/tickerHelper"
-	"io/ioutil"
-	"net/http"
-	"strconv"
-	"time"
 )
 
 var upgrader = websocket.Upgrader{
@@ -106,7 +104,7 @@ func CreateConnection(c *gin.Context) {
 	} else {
 		c.JSON(404, models.Response{
 			Message: "Subscriber token not found",
-			Type:    "ERR",
+			Type:    models.ResponseErr,
 		})
 	}
 }
@@ -118,7 +116,7 @@ func PushToConnection(c *gin.Context) {
 		if publisherChannel.SubscriberChannel == nil {
 			c.JSON(200, models.Response{
 				Message: "Subscriber has not subscribed yet",
-				Type:    "INF",
+				Type:    models.ResponseInf,
 			})
 		} else {
 			body, _ := ioutil.ReadAll(c.Request.Body)
@@ -127,13 +125,13 @@ func PushToConnection(c *gin.Context) {
 			}
 			c.JSON(200, models.Response{
 				Message: "Successfully pushed data to subscriber",
-				Type:    "INF",
+				Type:    models.ResponseInf,
 			})
 		}
 	} else {
 		c.JSON(404, models.Response{
 			Message: "Publisher token not found",
-			Type:    "ERR",
+			Type:    models.ResponseErr,
 		})
 	}
 }
@@ -142,7 +140,7 @@ func PrepareChannel(c *gin.Context) {
 	ll.Log.Debugf("Channel prepared by: %s", c.Request.Host)
 	var channel models.Channel
 	for {
-		channel = generateChannel(c.Request)
+		channel = models.GenerateChannel(c.Request)
 		if _, ok := publisherChannels[channel.PublisherToken]; ok {
 			continue
 		} else {
@@ -157,8 +155,25 @@ func PrepareChannel(c *gin.Context) {
 
 func GetAllChannels(c *gin.Context) {
 	var allChannels []models.Channel
+
+	regexString := c.DefaultQuery("search", ".+")
+
+	ll.Log.Debug(regexString)
+
+	r, err := regexp.Compile(regexString)
+
+	if err != nil {
+		c.JSON(500, models.Response{
+			Type:    models.ResponseErr,
+			Message: "Invalid regex pattern was passed",
+		})
+		return
+	}
+
 	for _, value := range publisherChannels {
-		allChannels = append(allChannels, *value)
+		if r.MatchString(*value.Tag) {
+			allChannels = append(allChannels, *value)
+		}
 	}
 
 	c.JSON(200, models.Channels{
@@ -174,34 +189,35 @@ func GetChannel(c *gin.Context) {
 	} else {
 		c.JSON(404, models.Response{
 			Message: "Publisher token not found",
-			Type:    "ERR",
+			Type:    models.ResponseErr,
 		})
 	}
 }
 
-func generateChannel(r *http.Request) models.Channel {
+func EditChannel(c *gin.Context) {
+	publisherToken := c.Param("publisherToken")
 
-	decoder := json.NewDecoder(r.Body)
-	var c models.Channel
-	_ = decoder.Decode(&c)
+	var newChannelData models.Channel
+	err := c.BindJSON(&newChannelData)
 
-	hasher := md5.New()
-	timeString := strconv.FormatInt(time.Now().Unix(), 10)
-	hasher.Write([]byte(timeString))
-	publisherKey := hex.EncodeToString(hasher.Sum(nil))
+	if err != nil {
+		c.JSON(500, models.Response{
+			Type:    models.ResponseErr,
+			Message: "Invalid json passed",
+		})
+		return
+	}
 
-	hasher.Write([]byte(publisherKey))
-	subscriberKey := hex.EncodeToString(hasher.Sum(nil))
+	if publisherChannel, ok := publisherChannels[publisherToken]; ok {
+		publisherChannel.Tag = newChannelData.Tag
+		publisherChannel.SubscriberMessageHookUrl = newChannelData.SubscriberMessageHookUrl
+		publisherChannels[publisherToken] = publisherChannel
 
-	return models.Channel{
-		PublisherToken:           publisherKey,
-		SubscriberToken:          subscriberKey,
-		SubscriberMessageHookUrl: c.SubscriberMessageHookUrl,
-		Listeners:                0,
-
-		ResponseChannel:           make(chan int),
-		PublisherChannel:          make(chan int),
-		SubscriberChannel:         make(chan string),
-		SubscriberMessagesChannel: make(chan string),
+		c.JSON(200, publisherChannel)
+	} else {
+		c.JSON(500, models.Response{
+			Type:    models.ResponseErr,
+			Message: "Publisher token not found",
+		})
 	}
 }

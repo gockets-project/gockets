@@ -12,7 +12,7 @@ func InitRoutes() *gin.Engine {
 
 	r.NoRoute(func(c *gin.Context) {
 		c.JSON(404, models.Response{
-			Type:    "err",
+			Type:    "ERR",
 			Message: "Endpoint not found",
 		})
 	})
