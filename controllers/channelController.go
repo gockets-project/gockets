@@ -1,21 +1,18 @@
 package controllers
 
 import (
-	"crypto/md5"
-	"encoding/hex"
-	"encoding/json"
-	"github.com/gorilla/mux"
+	"io/ioutil"
+	"net/http"
+	"regexp"
+	"time"
+
+	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
-	"gockets/helpers"
 	"gockets/models"
 	"gockets/src/services/callback"
 	"gockets/src/services/connection"
 	"gockets/src/services/logger"
 	"gockets/src/services/tickerHelper"
-	"io/ioutil"
-	"net/http"
-	"strconv"
-	"time"
 )
 
 var upgrader = websocket.Upgrader{
@@ -28,12 +25,10 @@ var publisherChannels = make(map[string]*models.Channel)
 
 var subscriberChannels = make(map[string]*models.Channel)
 
-func CloseConnection(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	var response models.Response
-	var code = http.StatusOK
+func CloseConnection(c *gin.Context) {
+	publisherToken := c.Param("publisherToken")
 
-	if publisherChannel, ok := publisherChannels[vars["publisherToken"]]; ok {
+	if publisherChannel, ok := publisherChannels[publisherToken]; ok {
 
 		for i := 0; i < publisherChannel.Listeners; i++ {
 			publisherChannel.PublisherChannel <- models.ChannelCloseSignal
@@ -42,26 +37,24 @@ func CloseConnection(w http.ResponseWriter, r *http.Request) {
 		delete(publisherChannels, publisherChannel.PublisherToken)
 		delete(subscriberChannels, publisherChannel.SubscriberToken)
 
-		response = models.Response{
+		c.JSON(200, models.Response{
 			Message: "Successfully closed connection",
 			Type:    "OK",
-		}
+		})
 	} else {
-		response = models.Response{
+		c.JSON(404, models.Response{
 			Message: "Publisher token not found",
 			Type:    "ERR",
-		}
-		code = http.StatusNotFound
+		})
 	}
-
-	helpers.WriteJsonResponse(w, response, code)
 }
 
-func CreateConnection(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	if subscriberChannel, ok := subscriberChannels[vars["subscriberToken"]]; ok {
+func CreateConnection(c *gin.Context) {
+	subscriberToken := c.Param("subscriberToken")
+
+	if subscriberChannel, ok := subscriberChannels[subscriberToken]; ok {
 		ll.Log.Debug("Establishing WS connection")
-		conn, _ := upgrader.Upgrade(w, r, nil)
+		conn, _ := upgrader.Upgrade(c.Writer, c.Request, nil)
 		ll.Log.Debug("Connection upgraded")
 		ccc := make(chan int)
 		conn.SetCloseHandler(func(code int, text string) error {
@@ -92,9 +85,9 @@ func CreateConnection(w http.ResponseWriter, r *http.Request) {
 		conn.SetPongHandler(func(appData string) error {
 			ll.Log.Debug("Pong handler triggered")
 			deadline := tickerHelper.GetPingDeadline().Add(time.Duration(2 * time.Second))
-			_ = conn.SetReadDeadline(deadline)
+			err := conn.SetReadDeadline(deadline)
 			ll.Log.Debug("Set read deadline to %s", deadline.String())
-			return nil
+			return err
 		})
 		ll.Log.Debug("Created PONG handler")
 
@@ -109,49 +102,45 @@ func CreateConnection(w http.ResponseWriter, r *http.Request) {
 			ll.Log.Debug("Ignored CALLBACK routine. No hook url specified")
 		}
 	} else {
-		helpers.WriteJsonResponse(w, models.Response{
+		c.JSON(404, models.Response{
 			Message: "Subscriber token not found",
-			Type:    "ERR",
-		}, http.StatusNotFound)
+			Type:    models.ResponseErr,
+		})
 	}
 }
 
-func PushToConnection(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	var response models.Response
-	var code = http.StatusOK
+func PushToConnection(c *gin.Context) {
+	publisherToken := c.Param("publisherToken")
 
-	if publisherChannel, ok := publisherChannels[vars["publisherToken"]]; ok {
+	if publisherChannel, ok := publisherChannels[publisherToken]; ok {
 		if publisherChannel.SubscriberChannel == nil {
-			response = models.Response{
+			c.JSON(200, models.Response{
 				Message: "Subscriber has not subscribed yet",
-				Type:    "INF",
-			}
+				Type:    models.ResponseInf,
+			})
 		} else {
-			body, _ := ioutil.ReadAll(r.Body)
+			body, _ := ioutil.ReadAll(c.Request.Body)
 			for i := 0; i < publisherChannel.Listeners; i++ {
 				publisherChannel.SubscriberChannel <- string(body)
 			}
-			response = models.Response{
+			c.JSON(200, models.Response{
 				Message: "Successfully pushed data to subscriber",
-				Type:    "INF",
-			}
+				Type:    models.ResponseInf,
+			})
 		}
 	} else {
-		response = models.Response{
+		c.JSON(404, models.Response{
 			Message: "Publisher token not found",
-			Type:    "ERR",
-		}
-		code = http.StatusNotFound
+			Type:    models.ResponseErr,
+		})
 	}
-	helpers.WriteJsonResponse(w, response, code)
 }
 
-func PrepareChannel(w http.ResponseWriter, r *http.Request) {
-	ll.Log.Debugf("Channel prepared by: %s", r.Host)
+func PrepareChannel(c *gin.Context) {
+	ll.Log.Debugf("Channel prepared by: %s", c.Request.Host)
 	var channel models.Channel
 	for {
-		channel = generateChannel(r)
+		channel = models.GenerateChannel(c.Request)
 		if _, ok := publisherChannels[channel.PublisherToken]; ok {
 			continue
 		} else {
@@ -161,65 +150,74 @@ func PrepareChannel(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	preparedJson, _ := json.Marshal(channel)
-	w.Header().Set("Content-Type", "application/json")
-	_, _ = w.Write(preparedJson)
+	c.JSON(200, channel)
 }
 
-func GetAllChannels(w http.ResponseWriter, r *http.Request) {
+func GetAllChannels(c *gin.Context) {
 	var allChannels []models.Channel
-	for _, value := range publisherChannels {
-		allChannels = append(allChannels, *value)
+
+	regexString := c.DefaultQuery("search", ".+")
+
+	ll.Log.Debug(regexString)
+
+	r, err := regexp.Compile(regexString)
+
+	if err != nil {
+		c.JSON(500, models.Response{
+			Type:    models.ResponseErr,
+			Message: "Invalid regex pattern was passed",
+		})
+		return
 	}
 
-	preparedJson, _ := json.Marshal(models.Channels{
+	for _, value := range publisherChannels {
+		if r.MatchString(*value.Tag) {
+			allChannels = append(allChannels, *value)
+		}
+	}
+
+	c.JSON(200, models.Channels{
 		Channels: allChannels,
 	})
-
-	w.Header().Set("Content-Type", "application/json")
-	_, _ = w.Write(preparedJson)
 }
 
-func GetChannel(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	var preparedJson []byte
-	w.Header().Set("Content-Type", "application/json")
-	if publisherChannel, ok := publisherChannels[vars["publisherToken"]]; ok {
-		preparedJson, _ = json.Marshal(publisherChannel)
+func GetChannel(c *gin.Context) {
+	publisherToken := c.Param("publisherToken")
+
+	if publisherChannel, ok := publisherChannels[publisherToken]; ok {
+		c.JSON(200, publisherChannel)
 	} else {
-		preparedJson, _ = json.Marshal(models.Response{
+		c.JSON(404, models.Response{
 			Message: "Publisher token not found",
-			Type:    "ERR",
+			Type:    models.ResponseErr,
 		})
-		w.WriteHeader(http.StatusNotFound)
+	}
+}
+
+func EditChannel(c *gin.Context) {
+	publisherToken := c.Param("publisherToken")
+
+	var newChannelData models.Channel
+	err := c.BindJSON(&newChannelData)
+
+	if err != nil {
+		c.JSON(500, models.Response{
+			Type:    models.ResponseErr,
+			Message: "Invalid json passed",
+		})
+		return
 	}
 
-	_, _ = w.Write(preparedJson)
-}
+	if publisherChannel, ok := publisherChannels[publisherToken]; ok {
+		publisherChannel.Tag = newChannelData.Tag
+		publisherChannel.SubscriberMessageHookUrl = newChannelData.SubscriberMessageHookUrl
+		publisherChannels[publisherToken] = publisherChannel
 
-func generateChannel(r *http.Request) models.Channel {
-
-	decoder := json.NewDecoder(r.Body)
-	var c models.Channel
-	_ = decoder.Decode(&c)
-
-	hasher := md5.New()
-	timeString := strconv.FormatInt(time.Now().Unix(), 10)
-	hasher.Write([]byte(timeString))
-	publisherKey := hex.EncodeToString(hasher.Sum(nil))
-
-	hasher.Write([]byte(publisherKey))
-	subscriberKey := hex.EncodeToString(hasher.Sum(nil))
-
-	return models.Channel{
-		PublisherToken:           publisherKey,
-		SubscriberToken:          subscriberKey,
-		SubscriberMessageHookUrl: c.SubscriberMessageHookUrl,
-		Listeners:                0,
-
-		ResponseChannel:           make(chan int),
-		PublisherChannel:          make(chan int),
-		SubscriberChannel:         make(chan string),
-		SubscriberMessagesChannel: make(chan string),
+		c.JSON(200, publisherChannel)
+	} else {
+		c.JSON(500, models.Response{
+			Type:    models.ResponseErr,
+			Message: "Publisher token not found",
+		})
 	}
 }

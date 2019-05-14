@@ -3,7 +3,6 @@ package helpers
 import (
 	"encoding/json"
 	"errors"
-	"gockets/src/services/logger"
 	"net"
 	"net/http"
 )
@@ -15,20 +14,8 @@ func WriteJsonResponse(w http.ResponseWriter, o interface{}, respCode int) {
 	w.Write(preparedJson)
 }
 
-func LogError(e error) {
-	if e != nil {
-		ll.Log.Error(e)
-	}
-}
-
-func LogErrorf(f string, e error) {
-	if e != nil {
-		ll.Log.Errorf(f, e)
-	}
-}
-
 func LookupName(hostname string) (string, error) {
-	ips, err := net.LookupIP("127.0.0.1")
+	ips, err := net.LookupIP(hostname)
 	if err != nil {
 		return "", err
 	}
@@ -38,4 +25,13 @@ func LookupName(hostname string) (string, error) {
 	}
 
 	return "", errors.New("no ips defined")
+}
+
+func SliceContains(a []string, x string) bool {
+	for _, n := range a {
+		if x == n {
+			return true
+		}
+	}
+	return false
 }

@@ -1,19 +1,22 @@
 package main
 
 import (
+	"strconv"
+
+	"github.com/spf13/viper"
 	"gockets/routes"
 	"gockets/setup"
 	"gockets/src/services/logger"
-	"net/http"
-	"strconv"
 )
 
 func main() {
-	setupObject := setup.Setup()
-	router := routes.InitRoutes(setupObject.AdminHostname, setupObject.Port)
-	port := ":" + strconv.Itoa(setupObject.Port)
+	setup.Init()
+
+	router := routes.InitRoutes()
+	port := ":" + strconv.Itoa(viper.GetInt("port"))
 	ll.Log.Infof("Server started on %s", port)
-	err := http.ListenAndServe(port, router)
+
+	err := router.Run(port)
 	if err != nil {
 		ll.Log.Fatal(err)
 	}

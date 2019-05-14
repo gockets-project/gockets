@@ -29,12 +29,14 @@ By default daemon is listening to **8844** port. Change it in `main` function if
 `POST` `/channel/prepare` - prepares channel and returns JSON object which contains `publisher_key` and `subscriber_key`.  May contain JSON object in body with hook url specified. Example:
 ```json
 {
-	"subscriber_message_hook_url" : "http://localhost/log.php"
+	"subscriber_message_hook_url" : "http://localhost/log.php",
+	"tag" : "someApplication|priority:5|thirdTag"
 }
 ```
-`GET` `/channel` - list of all channels awaiting publishing or subscription.  
-`GET` `/channel/{publisher_key}` - get specific channel data.    
-`GET` `/channel/subscribe/{subscriber_key}` - creates a Websocket connection with channel referenced by `subscriber_key`.  
+`GET` `/channel/show` - list of all channels awaiting publishing or subscription. May be filtered by tag with `search` parameter by passing URLEncoded regex  
+`GET` `/channel/show/{publisher_key}` - get specific channel data.    
+`GET` `/channel/subscribe/{subscriber_key}` - creates a Websocket connection with channel referenced by `subscriber_key`.
+`PATCH` `/channel/edit/{publisher_key}` - edit channel by passing body of same structure as for `POST` `/channel/prepare` request.  
 `POST` `/channel/publish/{publisher_key}` - pushes data to a Websocket connection passed in `body` of request.  
 `DELETE` `/channel/publish/{publisher_key}` - closes all Websocket connection to channel specified and deletes channel itself.
 

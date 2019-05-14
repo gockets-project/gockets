@@ -2,35 +2,44 @@ package setup
 
 import (
 	"flag"
-	"gockets/models"
+
+	"github.com/spf13/viper"
 	"gockets/src/services/logger"
 	"gockets/src/services/tickerHelper"
 )
 
-func Setup() models.Setup {
-	setupObject := models.Setup{}
-	flagPass(&setupObject)
-	initPackages(setupObject)
-	ll.InitLogger(setupObject.LogLevel)
+func init() {
+}
+
+func viperDefaultValues() {
+	viper.SetDefault("managementProtect", true)
+	viper.SetDefault("allowedHostnames", []string{
+		"127.0.0.1",
+		"localhost",
+	})
+	viper.SetDefault("pingInterval", 10)
+	viper.SetDefault("logLevel", 3)
+	viper.SetDefault("port", 8844)
+}
+
+func Init() {
+	flagPass()
+	viperDefaultValues()
+	initPackages()
 	ll.Log.Debug("Setup complete")
-	return setupObject
 }
 
-func flagPass(setupObject *models.Setup) {
-	portIntPtr := flag.Int("port", 8844, "Port of a server")
-	pingIntPtr := flag.Int("ping-interval", 60, "Interval of ping request and time for pong response for clients in seconds")
-	logLvlPtr := flag.Int("log-level", 1, "Level of logging. 1 - Info and error. 2 - Error only. 3 - All info with debug")
-	llLockPtr := flag.String("host-name", "localhost", "Lock access to all administrative routes only to access from specific hostname")
-	if *logLvlPtr < 1 || *logLvlPtr > 3 {
-		panic("Invalid argument passed to log-level")
-	}
+func flagPass() {
+	configPtr := flag.String("configPath", "config.yml", "Path to config file")
 	flag.Parse()
-	setupObject.Port = *portIntPtr
-	setupObject.PingDelay = *pingIntPtr
-	setupObject.LogLevel = *logLvlPtr
-	setupObject.AdminHostname = *llLockPtr
+	viper.SetConfigFile(*configPtr)
+	err := viper.ReadInConfig()
+	if err != nil {
+		panic(err)
+	}
 }
 
-func initPackages(setupObject models.Setup) {
-	tickerHelper.SetPingInterval(setupObject.PingDelay)
+func initPackages() {
+	tickerHelper.SetPingInterval(viper.GetInt("pingInterval"))
+	ll.InitLogger(viper.GetInt("logLevel"))
 }
