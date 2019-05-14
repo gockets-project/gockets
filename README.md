@@ -8,9 +8,9 @@
 
 ## Running
 
-Execute binary created after building. Pass `-h` to get help about arguments
-   `-config string`  
-        Path to configuration file. Default `config.yml`  
+Execute binary created after building. Pass `-h` to get help about arguments  
+    `-config string`  
+	Path to configuration file. Default `config.yml`  
 ## Usage
 For convenience [Postman collection](https://documenter.getpostman.com/view/4929623/S1LpbBvp) was published with latest API reference.  
 
