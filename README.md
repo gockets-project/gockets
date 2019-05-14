@@ -9,18 +9,8 @@
 ## Running
 
 Execute binary created after building. Pass `-h` to get help about arguments
-
-   `-host-name string`  
-        Lock access to all administrative routes only to access from specific hostname (default "localhost")  
-          
-  `-log-level INT`  
-        Level of logging. 1 - Info and error. 2 - Error only. 3 - All info with debug (default 1)
-          
-  `-ping-interval INT`  
-        Interval of ping request and time for pong response for clients in seconds (default 60)  
-        
-  `-port INT`  
-        Port of a server (default 8844)  
+   `-config string`  
+        Path to configuration file. Default `config.yml`  
 ## Usage
 For convenience [Postman collection](https://documenter.getpostman.com/view/4929623/S1LpbBvp) was published with latest API reference.  
 
